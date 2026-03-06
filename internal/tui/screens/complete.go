@@ -14,11 +14,17 @@ type FailedStep struct {
 	Error string
 }
 
+type MissingDep struct {
+	Name        string
+	InstallHint string
+}
+
 type CompletePayload struct {
 	ConfiguredAgents    int
 	InstalledComponents int
 	FailedSteps         []FailedStep
 	RollbackPerformed   bool
+	MissingDeps         []MissingDep
 }
 
 func RenderComplete(data CompletePayload) string {
@@ -38,6 +44,8 @@ func renderCompleteSuccess(data CompletePayload) string {
 	b.WriteString("  " + styles.HeadingStyle.Render("Installed components") + "  " + styles.SuccessStyle.Render(fmt.Sprintf("%d", data.InstalledComponents)) + "\n")
 	b.WriteString("\n")
 
+	renderMissingDeps(&b, data.MissingDeps)
+
 	b.WriteString(styles.HeadingStyle.Render("Next steps"))
 	b.WriteString("\n")
 	b.WriteString(styles.UnselectedStyle.Render("  1. Set your API keys"))
@@ -50,6 +58,20 @@ func renderCompleteSuccess(data CompletePayload) string {
 	b.WriteString(styles.HelpStyle.Render("Press Enter to exit."))
 
 	return b.String()
+}
+
+func renderMissingDeps(b *strings.Builder, deps []MissingDep) {
+	if len(deps) == 0 {
+		return
+	}
+
+	b.WriteString(styles.WarningStyle.Render(fmt.Sprintf("Missing %d dependency(ies):", len(deps))))
+	b.WriteString("\n")
+	for _, dep := range deps {
+		b.WriteString("  " + styles.WarningStyle.Render(dep.Name) + "  " + styles.SubtextStyle.Render(dep.InstallHint))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 }
 
 func renderCompleteFailed(data CompletePayload) string {
@@ -79,6 +101,8 @@ func renderCompleteFailed(data CompletePayload) string {
 		b.WriteString(styles.WarningStyle.Render("Rollback was performed — previous configuration restored."))
 		b.WriteString("\n\n")
 	}
+
+	renderMissingDeps(&b, data.MissingDeps)
 
 	b.WriteString(styles.HeadingStyle.Render("What to do"))
 	b.WriteString("\n")

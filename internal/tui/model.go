@@ -251,6 +251,7 @@ func (m Model) View() string {
 			InstalledComponents: len(m.Selection.Components),
 			FailedSteps:         extractFailedSteps(m.Execution),
 			RollbackPerformed:   len(m.Execution.Rollback.Steps) > 0,
+			MissingDeps:         extractMissingDeps(m.Detection),
 		})
 	case ScreenBackups:
 		return screens.RenderBackups(m.Backups, m.Cursor)
@@ -590,6 +591,20 @@ func preselectedAgents(detection system.DetectionResult) []model.AgentID {
 	}
 
 	return selected
+}
+
+func extractMissingDeps(detection system.DetectionResult) []screens.MissingDep {
+	if detection.Dependencies.AllPresent {
+		return nil
+	}
+
+	var deps []screens.MissingDep
+	for _, dep := range detection.Dependencies.Dependencies {
+		if !dep.Installed && dep.Required {
+			deps = append(deps, screens.MissingDep{Name: dep.Name, InstallHint: dep.InstallHint})
+		}
+	}
+	return deps
 }
 
 func extractFailedSteps(result pipeline.ExecutionResult) []screens.FailedStep {

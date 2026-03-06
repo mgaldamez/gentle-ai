@@ -97,6 +97,14 @@ func RunInstall(args []string, detection system.DetectionResult) (InstallResult,
 		return result, err
 	}
 
+	// Print dependency warnings before the pipeline starts (CLI only).
+	// The TUI surfaces these on the complete screen instead.
+	if !detection.Dependencies.AllPresent {
+		fmt.Fprintf(os.Stderr, "WARNING: missing dependencies: %s\n\n%s\n",
+			strings.Join(detection.Dependencies.MissingRequired, ", "),
+			system.FormatMissingDepsMessage(detection.Dependencies))
+	}
+
 	stagePlan = runtime.stagePlan()
 	result.Plan = stagePlan
 
@@ -628,18 +636,12 @@ func (s checkDependenciesStep) ID() string {
 }
 
 func (s checkDependenciesStep) Run() error {
-	report := system.DetectDependencies(context.Background(), s.profile)
-	if report.AllPresent {
-		return nil
-	}
-
-	// Print warnings for missing dependencies but do NOT block the pipeline.
-	// If a dep IS actually needed, the corresponding install step will fail
-	// (e.g., npm install will fail if node is missing). That is the right
-	// place for the error — not here.
-	fmt.Fprintf(os.Stderr, "WARNING: %s\n\n%s\n",
-		fmt.Sprintf("missing dependencies: %s", strings.Join(report.MissingRequired, ", ")),
-		system.FormatMissingDepsMessage(report))
+	// Run detection but do NOT write to stdout/stderr — this step runs
+	// inside the Bubble Tea alternate screen in TUI mode, so any raw
+	// output corrupts the display (see issue #2). Missing deps are
+	// surfaced on the TUI complete screen and by the actual install steps
+	// failing with real error messages.
+	_ = system.DetectDependencies(context.Background(), s.profile)
 	return nil
 }
 
