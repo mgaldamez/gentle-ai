@@ -23,7 +23,37 @@ The orchestrator will give you:
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Artifact type: `explore`. If no change name (standalone explore), use slug: `sdd/explore/{topic-slug}`.
+- If mode is `engram`:
+
+  **Read context** (optional — load project context if available):
+  1. `mem_search(query: "sdd-init/{project}", project: "{project}")` → get observation ID
+  2. `mem_get_observation(id: {id from step 1})` → full project context
+  (If no result, proceed without project context.)
+
+  **Save your artifact**:
+  - If tied to a named change:
+    ```
+    mem_save(
+      title: "sdd/{change-name}/explore",
+      topic_key: "sdd/{change-name}/explore",
+      type: "architecture",
+      project: "{project}",
+      content: "{your full exploration markdown}"
+    )
+    ```
+  - If standalone (no change name):
+    ```
+    mem_save(
+      title: "sdd/explore/{topic-slug}",
+      topic_key: "sdd/explore/{topic-slug}",
+      type: "architecture",
+      project: "{project}",
+      content: "{your full exploration markdown}"
+    )
+    ```
+  `topic_key` enables upserts — saving again updates, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`.
 - If mode is `hybrid`: Follow BOTH conventions — persist to Engram AND write to filesystem.
 - If mode is `none`: Return result only.
@@ -31,7 +61,11 @@ Read and follow `skills/_shared/persistence-contract.md` for mode resolution rul
 ### Retrieving Context
 
 Before starting, load any existing project context and specs per the active convention:
-- **engram**: Search for `sdd-init/{project}` (project context) and `sdd/` (existing artifacts).
+- **engram**:
+  1. `mem_search(query: "sdd-init/{project}", project: "{project}")` → get observation ID
+  2. `mem_get_observation(id: {id from step 1})` → full project context
+  3. Optionally `mem_search(query: "sdd/", project: "{project}")` → find existing artifacts
+  (If no results, proceed without prior context.)
 - **openspec**: Read `openspec/config.yaml` and `openspec/specs/`.
 - **none**: Use whatever context the orchestrator passed in the prompt.
 

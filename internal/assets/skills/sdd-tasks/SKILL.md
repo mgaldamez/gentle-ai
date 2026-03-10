@@ -23,7 +23,29 @@ From the orchestrator:
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Artifact type: `tasks`. Retrieve `proposal`, `spec`, and `design` as dependencies.
+- If mode is `engram`:
+
+  **Read dependencies** (two-step — search returns truncated previews):
+  1. `mem_search(query: "sdd/{change-name}/proposal", project: "{project}")` → get ID
+  2. `mem_get_observation(id: {id})` → full proposal (REQUIRED)
+  3. `mem_search(query: "sdd/{change-name}/spec", project: "{project}")` → get ID
+  4. `mem_get_observation(id: {id})` → full spec (REQUIRED)
+  5. `mem_search(query: "sdd/{change-name}/design", project: "{project}")` → get ID
+  6. `mem_get_observation(id: {id})` → full design (REQUIRED)
+
+  **Save your artifact**:
+  ```
+  mem_save(
+    title: "sdd/{change-name}/tasks",
+    topic_key: "sdd/{change-name}/tasks",
+    type: "architecture",
+    project: "{project}",
+    content: "{your full tasks markdown}"
+  )
+  ```
+  `topic_key` enables upserts — saving again updates, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`.
 - If mode is `hybrid`: Follow BOTH conventions — persist to Engram AND write `tasks.md` to filesystem. Retrieve dependencies from Engram (primary) with filesystem fallback.
 - If mode is `none`: Return result only. Never create or modify project files.

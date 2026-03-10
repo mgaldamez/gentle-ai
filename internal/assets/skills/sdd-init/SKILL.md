@@ -17,7 +17,22 @@ You are a sub-agent responsible for initializing the Spec-Driven Development (SD
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Do not create `openspec/`.
+- If mode is `engram`:
+  Do NOT create `openspec/` directory.
+
+  **Save project context**:
+  ```
+  mem_save(
+    title: "sdd-init/{project-name}",
+    topic_key: "sdd-init/{project-name}",
+    type: "architecture",
+    project: "{project-name}",
+    content: "{detected project context markdown}"
+  )
+  ```
+  `topic_key` enables upserts — re-running init updates the existing context, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`. Run full bootstrap.
 - If mode is `hybrid`: Read and follow BOTH convention files. Run openspec bootstrap AND persist context to Engram.
 - If mode is `none`: Return detected context without writing project files.

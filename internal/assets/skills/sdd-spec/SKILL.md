@@ -23,7 +23,27 @@ From the orchestrator:
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Artifact type: `spec`. Retrieve `proposal` as dependency. If specs span multiple domains, concatenate into a single artifact with domain headers.
+- If mode is `engram`:
+
+  **Read dependencies** (two-step — search returns truncated previews):
+  1. `mem_search(query: "sdd/{change-name}/proposal", project: "{project}")` → get observation ID
+  2. `mem_get_observation(id: {id from step 1})` → full proposal content (REQUIRED)
+
+  If specs span multiple domains, concatenate into a single artifact with domain headers.
+
+  **Save your artifact**:
+  ```
+  mem_save(
+    title: "sdd/{change-name}/spec",
+    topic_key: "sdd/{change-name}/spec",
+    type: "architecture",
+    project: "{project}",
+    content: "{your full spec markdown — all domains concatenated}"
+  )
+  ```
+  `topic_key` enables upserts — saving again updates, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`.
 - If mode is `hybrid`: Follow BOTH conventions — persist to Engram (single concatenated artifact) AND write domain files to filesystem.
 - If mode is `none`: Return result only. Never create or modify project files.

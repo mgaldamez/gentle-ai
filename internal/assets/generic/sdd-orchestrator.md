@@ -89,8 +89,29 @@ Each SDD phase has explicit read/write rules based on the dependency graph:
 
 For SDD phases with required dependencies, the sub-agent reads them directly from the backend (engram or openspec) — the orchestrator passes artifact references (topic keys or file paths), NOT the content itself.
 
+#### Engram Topic Key Format
+
+When launching sub-agents for SDD phases with engram mode, pass these exact topic_keys as artifact references:
+
+| Artifact | Topic Key |
+|----------|-----------|
+| Project context | `sdd-init/{project}` |
+| Exploration | `sdd/{change-name}/explore` |
+| Proposal | `sdd/{change-name}/proposal` |
+| Spec | `sdd/{change-name}/spec` |
+| Design | `sdd/{change-name}/design` |
+| Tasks | `sdd/{change-name}/tasks` |
+| Apply progress | `sdd/{change-name}/apply-progress` |
+| Verify report | `sdd/{change-name}/verify-report` |
+| Archive report | `sdd/{change-name}/archive-report` |
+| DAG state | `sdd/{change-name}/state` |
+
+Sub-agents retrieve full content via two steps:
+1. `mem_search(query: "{topic_key}", project: "{project}")` → get observation ID
+2. `mem_get_observation(id: {id})` → full content (REQUIRED — search results are truncated)
+
 ### State and Conventions (source of truth)
-Use shared convention files under `~/.gemini/antigravity/skills/_shared/` (global) or `.agent/skills/_shared/` (workspace):
+Shared convention files under `~/.gemini/antigravity/skills/_shared/` (global) or `.agent/skills/_shared/` (workspace) provide full reference documentation (sub-agents have inline instructions — convention files are supplementary):
 - `engram-convention.md` for artifact naming and two-step recovery
 - `persistence-contract.md` for mode behavior and state persistence/recovery
 - `openspec-convention.md` for file layout when mode is `openspec`

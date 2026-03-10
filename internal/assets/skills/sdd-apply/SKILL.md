@@ -24,7 +24,36 @@ From the orchestrator:
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Artifact type: `apply-progress`. Retrieve `proposal`, `spec`, `design`, and `tasks` as dependencies. Also use `mem_update` to mark completed tasks in the `tasks` artifact.
+- If mode is `engram`:
+
+  **Read dependencies** (two-step — search returns truncated previews):
+  1. `mem_search(query: "sdd/{change-name}/proposal", project: "{project}")` → get ID
+  2. `mem_get_observation(id: {id})` → full proposal
+  3. `mem_search(query: "sdd/{change-name}/spec", project: "{project}")` → get ID
+  4. `mem_get_observation(id: {id})` → full spec
+  5. `mem_search(query: "sdd/{change-name}/design", project: "{project}")` → get ID
+  6. `mem_get_observation(id: {id})` → full design
+  7. `mem_search(query: "sdd/{change-name}/tasks", project: "{project}")` → get ID (save this ID for updates)
+  8. `mem_get_observation(id: {id})` → full tasks
+
+  **Mark tasks complete** (update the tasks artifact as you go):
+  ```
+  mem_update(id: {tasks-observation-id}, content: "{updated tasks with [x] marks}")
+  ```
+
+  **Save progress artifact**:
+  ```
+  mem_save(
+    title: "sdd/{change-name}/apply-progress",
+    topic_key: "sdd/{change-name}/apply-progress",
+    type: "architecture",
+    project: "{project}",
+    content: "{your implementation progress report}"
+  )
+  ```
+  `topic_key` enables upserts — saving again updates, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for advanced operations.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`. Update `tasks.md` with `[x]` marks.
 - If mode is `hybrid`: Follow BOTH conventions — persist progress to Engram (`mem_update` for tasks) AND update `tasks.md` with `[x]` marks on filesystem.
 - If mode is `none`: Return progress only. Do not update project artifacts.

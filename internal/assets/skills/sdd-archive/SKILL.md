@@ -23,7 +23,35 @@ From the orchestrator:
 
 Read and follow `skills/_shared/persistence-contract.md` for mode resolution rules.
 
-- If mode is `engram`: Read and follow `skills/_shared/engram-convention.md`. Artifact type: `archive-report`. Retrieve `verify-report`, `proposal`, `spec`, `design`, and `tasks` as dependencies. Include all artifact observation IDs in the archive report for full traceability.
+- If mode is `engram`:
+
+  **Read ALL artifacts** (two-step for each — search returns truncated previews):
+  1. `mem_search(query: "sdd/{change-name}/proposal", project: "{project}")` → get ID
+  2. `mem_get_observation(id: {id})` → full proposal
+  3. `mem_search(query: "sdd/{change-name}/spec", project: "{project}")` → get ID
+  4. `mem_get_observation(id: {id})` → full spec
+  5. `mem_search(query: "sdd/{change-name}/design", project: "{project}")` → get ID
+  6. `mem_get_observation(id: {id})` → full design
+  7. `mem_search(query: "sdd/{change-name}/tasks", project: "{project}")` → get ID
+  8. `mem_get_observation(id: {id})` → full tasks
+  9. `mem_search(query: "sdd/{change-name}/verify-report", project: "{project}")` → get ID
+  10. `mem_get_observation(id: {id})` → full verification report
+
+  **Record all observation IDs** — include them in the archive report for full traceability.
+
+  **Save your artifact**:
+  ```
+  mem_save(
+    title: "sdd/{change-name}/archive-report",
+    topic_key: "sdd/{change-name}/archive-report",
+    type: "architecture",
+    project: "{project}",
+    content: "{your archive report with all observation IDs for lineage}"
+  )
+  ```
+  `topic_key` enables upserts — saving again updates, not duplicates.
+
+  (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`. Perform merge and archive folder moves.
 - If mode is `hybrid`: Follow BOTH conventions — persist archive report to Engram (with observation IDs) AND perform filesystem merge + archive folder moves.
 - If mode is `none`: Return closure summary only. Do not perform archive file operations.
