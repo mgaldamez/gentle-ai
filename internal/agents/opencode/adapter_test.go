@@ -116,6 +116,11 @@ func TestInstallCommand(t *testing.T) {
 			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroFedora, PackageManager: "dnf"},
 			want:    [][]string{{"sudo", "npm", "install", "-g", "opencode-ai"}},
 		},
+		{
+			name:    "unsupported package manager returns error",
+			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroUbuntu, PackageManager: "zypper"},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

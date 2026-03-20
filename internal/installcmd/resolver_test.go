@@ -52,6 +52,12 @@ func TestResolveDependencyInstall(t *testing.T) {
 			want:    CommandSequence{{"winget", "install", "--id", "somepkg", "-e", "--accept-source-agreements", "--accept-package-agreements"}},
 		},
 		{
+			name:    "unsupported package manager returns error",
+			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroUbuntu, PackageManager: "zypper"},
+			dep:     "somepkg",
+			wantErr: true,
+		},
+		{
 			name:    "empty dependency returns error",
 			profile: system.PlatformProfile{OS: "darwin", PackageManager: "brew"},
 			dep:     "",

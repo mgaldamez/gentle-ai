@@ -99,6 +99,14 @@ func TestInstallCommandByProfile(t *testing.T) {
 				{"bash", "/tmp/gentleman-guardian-angel/install.sh"},
 			},
 		},
+		{
+			name: "unsupported package manager returns error",
+			profile: system.PlatformProfile{
+				OS:             "linux",
+				PackageManager: "zypper",
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -58,5 +58,5 @@ When checks pass, installer reports:
 
 If you run the installer on an unsupported OS or Linux distro, it exits immediately with an error:
 
-- `unsupported operating system: only macOS and Linux are supported in v0.2.0 (detected <os>)`
+- `unsupported operating system: only macOS, Linux, and Windows are supported (detected <os>)`
 - `unsupported linux distro: Linux support is limited to Ubuntu/Debian, Arch, and Fedora/RHEL family (detected <distro>)`

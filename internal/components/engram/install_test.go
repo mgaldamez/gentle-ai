@@ -34,6 +34,11 @@ func TestInstallCommandByProfile(t *testing.T) {
 			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroFedora, PackageManager: "dnf"},
 			want:    [][]string{{"env", "CGO_ENABLED=0", "go", "install", "github.com/Gentleman-Programming/engram/cmd/engram@latest"}},
 		},
+		{
+			name:    "unsupported package manager returns error",
+			profile: system.PlatformProfile{OS: "linux", PackageManager: "zypper"},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
