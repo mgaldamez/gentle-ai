@@ -112,9 +112,9 @@ func TestInstallCommand(t *testing.T) {
 			want:    [][]string{{"sudo", "npm", "install", "-g", "opencode-ai"}},
 		},
 		{
-			name:    "unsupported package manager errors",
-			profile: system.PlatformProfile{OS: "linux", LinuxDistro: "fedora", PackageManager: "dnf"},
-			wantErr: true,
+			name:    "fedora resolves npm install",
+			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroFedora, PackageManager: "dnf"},
+			want:    [][]string{{"sudo", "npm", "install", "-g", "opencode-ai"}},
 		},
 	}
 

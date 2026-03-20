@@ -53,6 +53,14 @@ func TestInstallHintNodeArch(t *testing.T) {
 	}
 }
 
+func TestInstallHintNodeFedora(t *testing.T) {
+	profile := PlatformProfile{OS: "linux", PackageManager: "dnf", LinuxDistro: LinuxDistroFedora}
+	hint := installHintNode(profile)
+	if !strings.Contains(hint, "dnf") || !strings.Contains(hint, "nodejs") {
+		t.Fatalf("installHintNode(fedora) = %q", hint)
+	}
+}
+
 func TestInstallHintBrew(t *testing.T) {
 	hint := installHintBrew()
 	if !strings.Contains(hint, "Homebrew") {
@@ -146,6 +154,17 @@ func TestInstallCommandsForDepGitArchUsesPacman(t *testing.T) {
 	}
 	if cmds[0][0] != "sudo" || cmds[0][1] != "pacman" {
 		t.Fatalf("git arch command = %v, want sudo pacman", cmds[0])
+	}
+}
+
+func TestInstallCommandsForDepGitFedoraUsesDnf(t *testing.T) {
+	profile := PlatformProfile{OS: "linux", PackageManager: "dnf", LinuxDistro: LinuxDistroFedora}
+	cmds := InstallCommandsForDep("git", profile)
+	if len(cmds) != 1 {
+		t.Fatalf("git fedora commands = %d, want 1", len(cmds))
+	}
+	if cmds[0][0] != "sudo" || cmds[0][1] != "dnf" {
+		t.Fatalf("git fedora command = %v, want sudo dnf", cmds[0])
 	}
 }
 
@@ -247,6 +266,7 @@ func TestInstallCommandsFullMatrix(t *testing.T) {
 		{OS: "darwin", PackageManager: "brew"},
 		{OS: "linux", PackageManager: "apt", LinuxDistro: "ubuntu"},
 		{OS: "linux", PackageManager: "pacman", LinuxDistro: "arch"},
+		{OS: "linux", PackageManager: "dnf", LinuxDistro: LinuxDistroFedora},
 	}
 
 	deps := []string{"git", "curl", "node", "go"}

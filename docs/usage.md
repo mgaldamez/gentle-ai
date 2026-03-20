@@ -70,5 +70,5 @@ gentle-ai install --dry-run \
 
 - **Detected tools**: git, curl, node, npm, brew, go
 - **Version checks**: validates minimum versions where applicable
-- **Platform-aware hints**: suggests `brew install`, `apt install`, `pacman -S`, or `winget install` depending on your OS
+- **Platform-aware hints**: suggests `brew install`, `apt install`, `pacman -S`, `dnf install`, or `winget install` depending on your OS
 - **Dependency-first approach**: detects what's installed, calculates what's needed, shows the full dependency tree before installing anything, then verifies each dependency after installation

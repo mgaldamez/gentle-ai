@@ -30,9 +30,9 @@ func TestInstallCommandByProfile(t *testing.T) {
 			want:    [][]string{{"env", "CGO_ENABLED=0", "go", "install", "github.com/Gentleman-Programming/engram/cmd/engram@latest"}},
 		},
 		{
-			name:    "unsupported package manager errors",
-			profile: system.PlatformProfile{OS: "linux", LinuxDistro: "fedora", PackageManager: "dnf"},
-			wantErr: true,
+			name:    "fedora uses go install with correct module path",
+			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroFedora, PackageManager: "dnf"},
+			want:    [][]string{{"env", "CGO_ENABLED=0", "go", "install", "github.com/Gentleman-Programming/engram/cmd/engram@latest"}},
 		},
 	}
 

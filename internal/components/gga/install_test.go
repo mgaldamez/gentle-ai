@@ -91,9 +91,13 @@ func TestInstallCommandByProfile(t *testing.T) {
 			},
 		},
 		{
-			name:    "unsupported package manager errors",
-			profile: system.PlatformProfile{OS: "linux", LinuxDistro: "fedora", PackageManager: "dnf"},
-			wantErr: true,
+			name:    "fedora uses git clone and install.sh",
+			profile: system.PlatformProfile{OS: "linux", LinuxDistro: system.LinuxDistroFedora, PackageManager: "dnf"},
+			want: [][]string{
+				{"rm", "-rf", "/tmp/gentleman-guardian-angel"},
+				{"git", "clone", "https://github.com/Gentleman-Programming/gentleman-guardian-angel.git", "/tmp/gentleman-guardian-angel"},
+				{"bash", "/tmp/gentleman-guardian-angel/install.sh"},
+			},
 		},
 	}
 
