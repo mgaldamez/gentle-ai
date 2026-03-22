@@ -656,6 +656,10 @@ func componentPaths(homeDir string, selection model.Selection, adapters []agents
 				if p := adapter.MCPConfigPath(homeDir, "engram"); p != "" {
 					paths = append(paths, p)
 				}
+			case model.StrategyTOMLFile:
+				if p := adapter.MCPConfigPath(homeDir, "engram"); p != "" {
+					paths = append(paths, p)
+				}
 			}
 			if adapter.SystemPromptStrategy() == model.StrategyMarkdownSections {
 				paths = append(paths, adapter.SystemPromptFile(homeDir))
@@ -673,9 +677,7 @@ func componentPaths(homeDir string, selection model.Selection, adapters []agents
 				if p := adapter.SettingsPath(homeDir); p != "" {
 					paths = append(paths, p)
 				}
-				if selection.SDDMode == model.SDDModeMulti {
-					paths = append(paths, filepath.Join(homeDir, ".config", "opencode", "plugins", "background-agents.ts"))
-				}
+				paths = append(paths, filepath.Join(homeDir, ".config", "opencode", "plugins", "background-agents.ts"))
 			}
 			if adapter.SupportsSkills() {
 				skillDir := adapter.SkillsDir(homeDir)
@@ -716,6 +718,9 @@ func componentPaths(homeDir string, selection model.Selection, adapters []agents
 				if p := adapter.MCPConfigPath(homeDir, "context7"); p != "" {
 					paths = append(paths, p)
 				}
+			case model.StrategyTOMLFile:
+				// Codex uses TOML for Engram but Context7 is not injected via TOML.
+				// No path to report — Context7 injection is skipped for TOML agents.
 			}
 		case model.ComponentPersona:
 			if selection.Persona == model.PersonaCustom {

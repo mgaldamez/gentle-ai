@@ -1288,7 +1288,7 @@ func TestInjectOpenCodeMultiWritesPlugin(t *testing.T) {
 	}
 }
 
-func TestInjectOpenCodeSingleDoesNotWritePlugin(t *testing.T) {
+func TestInjectOpenCodeSingleWritesPlugin(t *testing.T) {
 	home := t.TempDir()
 
 	_, err := Inject(home, opencodeAdapter(), "single")
@@ -1296,34 +1296,113 @@ func TestInjectOpenCodeSingleDoesNotWritePlugin(t *testing.T) {
 		t.Fatalf("Inject(single) error = %v", err)
 	}
 
-	pluginsDir := filepath.Join(home, ".config", "opencode", "plugins")
-	if _, err := os.Stat(pluginsDir); err == nil {
-		t.Fatal("plugins directory should NOT exist in single mode")
+	pluginPath := filepath.Join(home, ".config", "opencode", "plugins", "background-agents.ts")
+	if _, err := os.Stat(pluginPath); err != nil {
+		t.Fatalf("plugin file should exist in single mode: %v", err)
 	}
 }
 
-func TestInjectOpenCodePluginNpmNotFound(t *testing.T) {
+func TestInjectOpenCodePluginNoPkgManagerAvailable(t *testing.T) {
+	// Mock: no package manager (neither bun nor npm) is available.
 	orig := npmLookPath
 	npmLookPath = func(string) (string, error) {
-		return "", fmt.Errorf("npm not found")
+		return "", fmt.Errorf("not found")
 	}
 	defer func() { npmLookPath = orig }()
 
 	home := t.TempDir()
 
-	// Assert: inject succeeds even when npm is unavailable
+	// Assert: inject succeeds even when no package manager is available (soft skip).
 	result, err := Inject(home, opencodeAdapter(), "multi")
 	if err != nil {
-		t.Fatalf("Inject(multi) with no npm error = %v", err)
+		t.Fatalf("Inject(multi) with no package manager error = %v", err)
 	}
 
-	// Assert: plugin file was still written
+	// Assert: plugin file was still written regardless.
 	pluginPath := filepath.Join(home, ".config", "opencode", "plugins", "background-agents.ts")
 	if _, err := os.Stat(pluginPath); err != nil {
-		t.Fatalf("plugin file should exist even when npm unavailable: %v", err)
+		t.Fatalf("plugin file should exist even when no package manager available: %v", err)
 	}
 
 	_ = result
+}
+
+func TestInjectOpenCodePluginNpmFailureReturnsActionableError(t *testing.T) {
+	// Mock: package manager IS available but the install fails.
+	orig := npmLookPath
+	origRun := npmRun
+	npmLookPath = func(bin string) (string, error) {
+		if bin == "bun" {
+			return "", fmt.Errorf("not found")
+		}
+		if bin == "npm" {
+			return "/usr/bin/npm", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+	npmRun = func(dir string, args ...string) ([]byte, error) {
+		return []byte("ERR! some npm error"), fmt.Errorf("exit status 1")
+	}
+	defer func() {
+		npmLookPath = orig
+		npmRun = origRun
+	}()
+
+	home := t.TempDir()
+
+	_, err := Inject(home, opencodeAdapter(), "multi")
+	if err == nil {
+		t.Fatal("Inject(multi) should fail when npm install fails")
+	}
+	if !strings.Contains(err.Error(), "npm install") {
+		t.Fatalf("error should mention 'npm install', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "unique-names-generator") {
+		t.Fatalf("error should mention the package name, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "Fix:") {
+		t.Fatalf("error should contain actionable fix instructions, got: %v", err)
+	}
+}
+
+func TestInjectOpenCodePluginBunPreferredOverNpm(t *testing.T) {
+	// Mock: both bun and npm available; only bun should be called.
+	orig := npmLookPath
+	origRun := npmRun
+
+	var calledWith string
+	npmLookPath = func(bin string) (string, error) {
+		// Both available — bun should win.
+		if bin == "bun" || bin == "npm" {
+			return "/usr/local/bin/" + bin, nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+	npmRun = func(dir string, args ...string) ([]byte, error) {
+		if len(args) > 0 {
+			calledWith = args[0]
+		}
+		// Simulate successful install by creating the node_modules directory.
+		nmPath := filepath.Join(dir, "node_modules", "unique-names-generator")
+		if err := os.MkdirAll(nmPath, 0o755); err != nil {
+			return nil, err
+		}
+		return []byte(""), nil
+	}
+	defer func() {
+		npmLookPath = orig
+		npmRun = origRun
+	}()
+
+	home := t.TempDir()
+	_, err := Inject(home, opencodeAdapter(), "multi")
+	if err != nil {
+		t.Fatalf("Inject(multi) error = %v", err)
+	}
+
+	if !strings.Contains(calledWith, "bun") {
+		t.Fatalf("expected bun to be preferred over npm, but called: %q", calledWith)
+	}
 }
 
 func TestInjectOpenCodePluginIdempotent(t *testing.T) {
@@ -1380,5 +1459,153 @@ func TestInjectModelAssignmentsFunction(t *testing.T) {
 	applyAgent := agents["sdd-apply"].(map[string]any)
 	if _, ok := applyAgent["model"]; ok {
 		t.Fatal("sdd-apply should not have model field when not in assignments")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Agent-specific SDD orchestrator asset selection tests
+// ---------------------------------------------------------------------------
+
+// TestSDDOrchestratorAssetSelection verifies that sddOrchestratorAsset()
+// returns agent-specific paths for Gemini and Codex, and falls back to generic
+// for all other agents.
+func TestSDDOrchestratorAssetSelection(t *testing.T) {
+	tests := []struct {
+		agent model.AgentID
+		want  string
+	}{
+		{agent: model.AgentGeminiCLI, want: "gemini/sdd-orchestrator.md"},
+		{agent: model.AgentCodex, want: "codex/sdd-orchestrator.md"},
+		{agent: model.AgentClaudeCode, want: "generic/sdd-orchestrator.md"},
+		{agent: model.AgentOpenCode, want: "generic/sdd-orchestrator.md"},
+		{agent: model.AgentCursor, want: "generic/sdd-orchestrator.md"},
+		{agent: model.AgentVSCodeCopilot, want: "generic/sdd-orchestrator.md"},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.agent), func(t *testing.T) {
+			got := sddOrchestratorAsset(tt.agent)
+			if got != tt.want {
+				t.Fatalf("sddOrchestratorAsset(%q) = %q, want %q", tt.agent, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestInjectGeminiUsesAgentSpecificAsset verifies that Gemini injection uses
+// the gemini-specific sdd-orchestrator asset (with ~/.gemini/skills/ paths),
+// not the generic one with wrong vendor paths.
+func TestInjectGeminiUsesAgentSpecificAsset(t *testing.T) {
+	home := t.TempDir()
+
+	geminiAdapter, err := agents.NewAdapter("gemini-cli")
+	if err != nil {
+		t.Fatalf("NewAdapter(gemini-cli) error = %v", err)
+	}
+
+	result, injectErr := Inject(home, geminiAdapter, "")
+	if injectErr != nil {
+		t.Fatalf("Inject(gemini) error = %v", injectErr)
+	}
+	if !result.Changed {
+		t.Fatal("Inject(gemini) changed = false")
+	}
+
+	promptPath := filepath.Join(home, ".gemini", "GEMINI.md")
+	content, readErr := os.ReadFile(promptPath)
+	if readErr != nil {
+		t.Fatalf("ReadFile(%q) error = %v", promptPath, readErr)
+	}
+
+	text := string(content)
+
+	// Gemini-specific asset must reference Gemini skill paths.
+	if !strings.Contains(text, "~/.gemini/skills/_shared/") {
+		t.Fatal("GEMINI.md missing ~/.gemini/skills/_shared/ path — agent-specific asset not used")
+	}
+
+	// Gemini-specific asset must NOT reference Codex paths.
+	if strings.Contains(text, "~/.codex/") {
+		t.Fatal("GEMINI.md contains Codex-specific paths — wrong asset was injected")
+	}
+}
+
+// TestInjectCodexWritesSDDOrchestratorAndSkills verifies that Codex injection
+// creates agents.md with the SDD orchestrator and writes skill files.
+func TestInjectCodexWritesSDDOrchestratorAndSkills(t *testing.T) {
+	home := t.TempDir()
+
+	codexAdapter, err := agents.NewAdapter("codex")
+	if err != nil {
+		t.Fatalf("NewAdapter(codex) error = %v", err)
+	}
+
+	result, injectErr := Inject(home, codexAdapter, "")
+	if injectErr != nil {
+		t.Fatalf("Inject(codex) error = %v", injectErr)
+	}
+	if !result.Changed {
+		t.Fatal("Inject(codex) changed = false")
+	}
+
+	// Verify SDD orchestrator was injected into agents.md.
+	promptPath := filepath.Join(home, ".codex", "agents.md")
+	content, readErr := os.ReadFile(promptPath)
+	if readErr != nil {
+		t.Fatalf("ReadFile(%q) error = %v", promptPath, readErr)
+	}
+
+	text := string(content)
+	if !strings.Contains(text, "Spec-Driven Development") {
+		t.Fatal("agents.md missing SDD orchestrator content")
+	}
+
+	// Codex-specific asset must reference Codex skill paths.
+	if !strings.Contains(text, "~/.codex/skills/_shared/") {
+		t.Fatal("agents.md missing ~/.codex/skills/_shared/ path — agent-specific asset not used")
+	}
+
+	// Codex-specific asset must NOT reference Gemini paths.
+	if strings.Contains(text, "~/.gemini/") {
+		t.Fatal("agents.md contains Gemini-specific paths — wrong asset was injected")
+	}
+
+	// Should also write SDD skill files.
+	skillPath := filepath.Join(home, ".codex", "skills", "sdd-init", "SKILL.md")
+	if _, err := os.Stat(skillPath); err != nil {
+		t.Fatalf("expected SDD skill file %q: %v", skillPath, err)
+	}
+
+	// Shared files should also be written.
+	sharedPath := filepath.Join(home, ".codex", "skills", "_shared", "engram-convention.md")
+	if _, err := os.Stat(sharedPath); err != nil {
+		t.Fatalf("expected shared SDD convention file %q: %v", sharedPath, err)
+	}
+}
+
+// TestInjectCodexIsIdempotent verifies that injecting Codex twice does not
+// duplicate the SDD orchestrator content.
+func TestInjectCodexIsIdempotent(t *testing.T) {
+	home := t.TempDir()
+
+	codexAdapter, err := agents.NewAdapter("codex")
+	if err != nil {
+		t.Fatalf("NewAdapter(codex) error = %v", err)
+	}
+
+	first, err := Inject(home, codexAdapter, "")
+	if err != nil {
+		t.Fatalf("Inject(codex) first error = %v", err)
+	}
+	if !first.Changed {
+		t.Fatal("first Inject(codex) changed = false")
+	}
+
+	second, err := Inject(home, codexAdapter, "")
+	if err != nil {
+		t.Fatalf("Inject(codex) second error = %v", err)
+	}
+	if second.Changed {
+		t.Fatal("second Inject(codex) changed = true — SDD orchestrator was duplicated")
 	}
 }

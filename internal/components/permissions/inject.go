@@ -20,9 +20,14 @@ var claudeCodeOverlayJSON = []byte(`{
   "permissions": {
     "defaultMode": "bypassPermissions",
     "deny": [
-      "rm -rf /",
-      "sudo rm -rf /",
-      ".env"
+      "Bash(rm -rf /)",
+      "Bash(sudo rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(sudo rm -rf ~)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(.env)",
+      "Edit(.env.*)"
     ]
   }
 }
@@ -81,6 +86,9 @@ func agentOverlay(id model.AgentID) []byte {
 		return vscodeCopilotOverlayJSON
 	case model.AgentCursor:
 		// Cursor manages permissions via cli-config.json, not settings.json.
+		return nil
+	case model.AgentCodex:
+		// Codex has no known settings.json path; permissions are skipped.
 		return nil
 	default:
 		return nil
